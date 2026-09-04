@@ -1,0 +1,6 @@
+{
+  "name": "Roi Service - RS",
+  "description": "تطبيق Roi Service (RS) المتطور لطلب الخدمات المنزلية وتحديد موقع الزبون بدقة عبر الخرائط مع لوحة تحكم متكاملة للإدارة ونظام إشعارات داخلي وخارجي",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
