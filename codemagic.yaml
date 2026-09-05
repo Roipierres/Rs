@@ -1,16 +1,16 @@
 workflows:
   android-build:
-    name: Android Build
+    name: Build Native Android APK
     max_build_duration: 30
     instance_type: mac_mini_m2
     scripts:
-      - name: Build Android APK
+      - name: Upgrade Gradle and Build APK
         script: |
-          # توليد أداة التشغيل gradlew في حال عدم وجودها
-          gradle wrapper
+          # توليد وترقية Gradle إلى الإصدار 9.3.1 المطلوب
+          gradle wrapper --gradle-version 9.3.1
           chmod +x gradlew
           
-          # بناء ملف APK بنسخة Debug جاهزة للتثبيت
+          # تجميع التطبيق
           ./gradlew assembleDebug --stacktrace
     artifacts:
-      - app/build/outputs/**/*.apk
+      - app/build/outputs/apk/**/*.apk
