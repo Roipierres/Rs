@@ -1,23 +1,27 @@
 workflows:
   android-build:
     name: Android Build
-    max_build_duration: 30
+    max_build_duration: 15
     instance_type: mac_mini_m2
     scripts:
-      - name: Locate Flutter Project and Build APK
+      - name: Inspect Files and Build
         script: |
-          # البحث عن مكان ملف pubspec.yaml في أي مجلد
-          PUBSPEC_PATH=$(find . -name "pubspec.yaml" -type f | head -n 1)
+          echo "=== استعراض المجلدات والملفات داخل المستودع ==="
+          ls -la
+          echo "==============================================="
+          find . -maxdepth 3 -not -path '*/.*'
+          echo "==============================================="
           
-          if [ -n "$PUBSPEC_PATH" ]; then
-            PROJECT_DIR=$(dirname "$PUBSPEC_PATH")
-            echo "تم العثور على مشروع Flutter في المسار: $PROJECT_DIR"
-            cd "$PROJECT_DIR"
-            flutter packages get
-            flutter build apk --debug
-          else
-            echo "خطأ: لم يتم العثور على أي ملف pubspec.yaml في المستودع"
-            exit 1
+          # محاولة البحث عن مشاريع Node / React Native
+          PACKAGE_JSON=$(find . -name "package.json" -type f | head -n 1)
+          if [ -n "$PACKAGE_JSON" ]; then
+            echo "تم اكتشاف مشروع JavaScript / React Native في: $(dirname "$PACKAGE_JSON")"
+          fi
+          
+          # محاولة البحث عن أي ملف build.gradle
+          GRADLE_FILE=$(find . -name "*gradle*" -type f | head -n 1)
+          if [ -n "$GRADLE_FILE" ]; then
+            echo "تم العثور على ملفات أندرويد في: $(dirname "$GRADLE_FILE")"
           fi
     artifacts:
-      - "**/build/outputs/**/*.apk"
+      - "**/*.apk"
