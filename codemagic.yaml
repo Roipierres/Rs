@@ -1,6 +1,22 @@
 workflows:
   android-build:
     name: Android Build
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+    scripts:
+      - name: Build Android APK
+        script: |
+          # توليد أداة التشغيل gradlew في حال عدم وجودها
+          gradle wrapper
+          chmod +x gradlew
+          
+          # بناء ملف APK بنسخة Debug جاهزة للتثبيت
+          ./gradlew assembleDebug --stacktrace
+    artifacts:
+      - app/build/outputs/**/*.apk
+workflows:
+  android-build:
+    name: Android Build
     max_build_duration: 15
     instance_type: mac_mini_m2
     scripts:
