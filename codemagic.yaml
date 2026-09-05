@@ -4,11 +4,16 @@ workflows:
     max_build_duration: 30
     instance_type: mac_mini_m2
     scripts:
-      - name: Upgrade Gradle and Build APK
+      - name: Generate Keystore and Build APK
         script: |
+          # ترقية Gradle
           gradle wrapper --gradle-version 9.3.1
           chmod +x gradlew
-          # إيقاف التتبع الطويل وإظهار رسالة الخطأ المباشرة فقط
+          
+          # إنشاء مفتاح التوقيع الرقمي المفقود تلقائياً
+          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          
+          # بناء ملف APK وتجاوز الفحوصات غير الضرورية
           ./gradlew assembleDebug -x test -x lint --warning-mode none
     artifacts:
       - app/build/outputs/apk/**/*.apk
