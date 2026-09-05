@@ -4,9 +4,17 @@ workflows:
     max_build_duration: 30
     instance_type: mac_mini_m2
     scripts:
-      - name: Build Android APK
+      - name: Locate and Build Android APK
         script: |
-          chmod +x gradlew || true
-          ./gradlew assembleRelease || ./gradlew assembleDebug
+          # البحث التلقائي عن مسار مجلد أندرويد
+          GRADLEW_PATH=$(find . -name "gradlew" -type f | head -n 1)
+          if [ -n "$GRADLEW_PATH" ]; then
+            cd "$(dirname "$GRADLEW_PATH")"
+            chmod +x gradlew
+            ./gradlew assembleRelease || ./gradlew assembleDebug
+          else
+            echo "لم يتم العثور على gradlew، جاري محاولة البناء عبر Flutter..."
+            flutter build apk --debug
+          fi
     artifacts:
-      - app/build/outputs/**/*.apk
+      - "**/build/outputs/**/*.apk"
