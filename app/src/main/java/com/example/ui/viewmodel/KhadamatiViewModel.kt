@@ -5,12 +5,15 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.KhadamatiDatabase
 import com.example.data.model.AppSettingsEntity
+import com.example.data.model.CallLogEntity
+import com.example.data.model.ChatMessageEntity
 import com.example.data.model.OrderEntity
 import com.example.data.model.ServiceEntity
 import com.example.data.model.UserEntity
 import com.example.data.repository.KhadamatiRepository
 import com.example.util.AppNotification
 import com.example.util.NotificationHelper
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -33,7 +36,9 @@ class KhadamatiViewModel(application: Application) : AndroidViewModel(applicatio
             userDao = db.userDao(),
             serviceDao = db.serviceDao(),
             orderDao = db.orderDao(),
-            appSettingsDao = db.appSettingsDao()
+            appSettingsDao = db.appSettingsDao(),
+            chatMessageDao = db.chatMessageDao(),
+            callLogDao = db.callLogDao()
         )
         // Seed initial data
         viewModelScope.launch {
@@ -232,12 +237,12 @@ class KhadamatiViewModel(application: Application) : AndroidViewModel(applicatio
         val user = _currentUser.value
 
         viewModelScope.launch {
-            val orderNum = "KHD-" + (10000..99999).random()
+            val orderNum = "RS-" + (10000..99999).random()
             val order = OrderEntity(
                 orderNumber = orderNum,
                 customerId = user?.id ?: 1L,
                 customerName = customerName.ifBlank { user?.name ?: "عميل المنصة" },
-                customerPhone = customerPhone.ifBlank { user?.phone ?: "+966500000000" },
+                customerPhone = customerPhone.ifBlank { user?.phone ?: "0555000000" },
                 serviceId = service.id,
                 serviceName = service.title,
                 servicePrice = service.price,
@@ -253,6 +258,18 @@ class KhadamatiViewModel(application: Application) : AndroidViewModel(applicatio
             )
 
             repository.createOrder(order)
+
+            // Sync user's real-time location to Firestore
+            com.example.data.remote.FirestoreManager.saveUserLocation(
+                userId = user?.id ?: 1L,
+                userName = order.customerName,
+                userPhone = order.customerPhone,
+                latitude = latitude,
+                longitude = longitude,
+                address = order.addressText,
+                role = "CUSTOMER"
+            )
+
             _selectedServiceForOrder.value = null
             _orderSubmittedSuccess.value = orderNum
 
@@ -439,6 +456,80 @@ class KhadamatiViewModel(application: Application) : AndroidViewModel(applicatio
                     message = announcementMessage
                 )
             }
+        }
+    }
+
+    // ==========================================
+    // CHAT & CALL LOG CAPABILITIES
+    // ==========================================
+    fun getOrderChatMessages(orderNumber: String): Flow<List<ChatMessageEntity>> =
+        repository.getOrderChatMessages(orderNumber)
+
+    fun sendChatMessage(
+        orderNumber: String,
+        senderRole: String, // "CUSTOMER" or "WORKER"
+        messageText: String
+    ) {
+        if (messageText.isBlank()) return
+        val user = _currentUser.value
+        val senderId = user?.id ?: 1L
+        val senderName = if (senderRole == "CUSTOMER") {
+            user?.name ?: "الزبون"
+        } else {
+            "عامل التوصيل / الفني"
+        }
+
+        viewModelScope.launch {
+            repository.sendChatMessage(
+                orderNumber = orderNumber,
+                senderId = senderId,
+                senderName = senderName,
+                senderRole = senderRole,
+                messageText = messageText.trim()
+            )
+        }
+    }
+
+    // Simulate Technician/Delivery Worker response in chat for seamless testing
+    fun simulateWorkerResponse(orderNumber: String, text: String) {
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(1200)
+            repository.sendChatMessage(
+                orderNumber = orderNumber,
+                senderId = 9999L,
+                senderName = "عامل التوصيل (الفني)",
+                senderRole = "WORKER",
+                messageText = text
+            )
+        }
+    }
+
+    fun getCallLogsForOrder(orderNumber: String): Flow<List<CallLogEntity>> =
+        repository.getCallLogsForOrder(orderNumber)
+
+    val allCallLogs: StateFlow<List<CallLogEntity>> = repository.allCallLogs
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun recordCall(
+        orderNumber: String,
+        callerName: String,
+        receiverName: String,
+        receiverPhone: String,
+        callType: String = "OUTGOING", // "OUTGOING", "WHATSAPP"
+        durationSeconds: Int = 0,
+        notes: String = ""
+    ) {
+        viewModelScope.launch {
+            repository.recordCallLog(
+                orderNumber = orderNumber,
+                callerName = callerName,
+                receiverName = receiverName,
+                receiverPhone = receiverPhone,
+                callType = callType,
+                durationSeconds = durationSeconds,
+                status = "COMPLETED",
+                notes = notes
+            )
         }
     }
 }

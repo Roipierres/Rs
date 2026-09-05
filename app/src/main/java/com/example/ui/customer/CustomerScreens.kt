@@ -26,19 +26,26 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.HomeRepairService
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -46,6 +53,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -61,6 +69,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -77,7 +86,11 @@ import com.example.data.model.AppSettingsEntity
 import com.example.data.model.OrderEntity
 import com.example.data.model.ServiceEntity
 import com.example.data.model.UserEntity
+import com.example.ui.components.AiHomeAssistantDialog
 import com.example.ui.components.InteractiveMapPicker
+import com.example.ui.components.LiveWorkerTrackingCard
+import com.example.ui.components.OrderChatAndCallSheet
+import com.example.ui.components.OrderInvoiceDialog
 import com.example.ui.components.OrderStatusBadge
 import com.example.ui.components.RoiServiceHeroBadge
 import com.example.ui.components.getServiceIcon
@@ -103,6 +116,7 @@ fun CustomerHomeScreen(
     val selectedServiceForOrder by viewModel.selectedServiceForOrder.collectAsStateWithLifecycle()
     val orderSubmittedSuccess by viewModel.orderSubmittedSuccess.collectAsStateWithLifecycle()
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+    var showAiAssistantDialog by remember { mutableStateOf(false) }
 
     val categories = listOf(
         "الكل",
@@ -167,6 +181,84 @@ fun CustomerHomeScreen(
                                 color = MaterialTheme.colorScheme.onSurface,
                                 lineHeight = 18.sp
                             )
+                        }
+                    }
+                }
+            }
+
+            // Gemini AI Home Diagnosis Assistant Card
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .clickable { showAiAssistantDialog = true },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = KhadamatiBlueDark),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(KhadamatiAmberTertiary.copy(alpha = 0.25f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.AutoAwesome,
+                                    contentDescription = null,
+                                    tint = KhadamatiAmberTertiary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "المساعد الذكي للأعطال",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp,
+                                        color = Color.White
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = KhadamatiAmberTertiary
+                                    ) {
+                                        Text(
+                                            text = "Gemini AI",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = KhadamatiBlueDark,
+                                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = "تشخيص فوري للأعطال المنزلية وإرشادات أمان لبيتك",
+                                    fontSize = 11.sp,
+                                    color = Color.LightGray
+                                )
+                            }
+                        }
+
+                        FilledTonalButton(
+                            onClick = { showAiAssistantDialog = true },
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Text("فحص عطل", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -359,6 +451,17 @@ fun CustomerHomeScreen(
                         Text("إغلاق")
                     }
                 }
+            )
+        }
+
+        // Gemini AI Home Assistant Diagnosis Dialog
+        if (showAiAssistantDialog) {
+            AiHomeAssistantDialog(
+                onSelectServiceCategory = { category ->
+                    viewModel.setSelectedCategory(category)
+                    showAiAssistantDialog = false
+                },
+                onDismiss = { showAiAssistantDialog = false }
             )
         }
     }
@@ -564,6 +667,8 @@ fun ServiceRequestBottomSheet(
     var requestedDate by remember { mutableStateOf("غداً") }
     var requestedTimeSlot by remember { mutableStateOf("صباحاً (09:00 ص - 12:00 م)") }
     var customerNotes by remember { mutableStateOf("") }
+    var attachedPhotosCount by remember { mutableIntStateOf(0) }
+    var attachedVideosCount by remember { mutableIntStateOf(0) }
 
     // Exact Map Location state (Algeria)
     var selectedLat by remember { mutableDoubleStateOf(currentUser?.defaultLatitude ?: 36.7441) }
@@ -698,6 +803,95 @@ fun ServiceRequestBottomSheet(
                 shape = RoundedCornerShape(12.dp)
             )
 
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // 4. Photo/Video Diagnosis (معاينة وتشخيص العطل بالصور والفيديو)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(
+                        text = "تشخيص بصري للعطل (صور / فيديو مباشر)",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "يساعد الفني على إحضار قطع الغيار والمعدات المناسبة مسبقاً",
+                        fontSize = 11.sp,
+                        color = Color.Gray
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                attachedPhotosCount++
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (attachedPhotosCount > 0) "صور ($attachedPhotosCount)" else "إرفاق صور",
+                                fontSize = 11.sp
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                attachedVideosCount++
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (attachedVideosCount > 0) "فيديو ($attachedVideosCount)" else "فيديو العطل",
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+
+                    if (attachedPhotosCount > 0 || attachedVideosCount > 0) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = KhadamatiSecondaryTeal.copy(alpha = 0.12f)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = null,
+                                    tint = KhadamatiSecondaryTeal,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "تم تجهيز المرفقات ($attachedPhotosCount صورة، $attachedVideosCount فيديو) لإرسالها مع الطلب للفني",
+                                    fontSize = 10.sp,
+                                    color = KhadamatiSecondaryTeal,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(20.dp))
 
             // Exact Location Section via Interactive Map (Core requirement!)
@@ -784,12 +978,19 @@ fun ServiceRequestBottomSheet(
             // Submit Button
             Button(
                 onClick = {
+                    val finalNotes = buildString {
+                        append(customerNotes)
+                        if (attachedPhotosCount > 0 || attachedVideosCount > 0) {
+                            if (customerNotes.isNotBlank()) append("\n")
+                            append("📎 [مرفقات التشخيص: $attachedPhotosCount صورة، $attachedVideosCount فيديو]")
+                        }
+                    }
                     onSubmit(
                         customerName,
                         customerPhone,
                         requestedDate,
                         requestedTimeSlot,
-                        customerNotes,
+                        finalNotes,
                         selectedLat,
                         selectedLng,
                         addressText
@@ -826,6 +1027,9 @@ fun CustomerOrdersScreen(
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
 
     var selectedOrderForDetail by remember { mutableStateOf<OrderEntity?>(null) }
+    var activeChatOrder by remember { mutableStateOf<OrderEntity?>(null) }
+    var selectedOrderForTracking by remember { mutableStateOf<OrderEntity?>(null) }
+    var selectedOrderForInvoice by remember { mutableStateOf<OrderEntity?>(null) }
 
     // Filter customer orders (or show all recent for demo test convenience)
     val customerOrders = allOrders
@@ -889,12 +1093,79 @@ fun CustomerOrdersScreen(
                 items(customerOrders, key = { it.id }) { order ->
                     CustomerOrderCard(
                         order = order,
-                        currency = appSettings?.currency ?: "ر.س",
-                        onCardClick = { selectedOrderForDetail = order }
+                        currency = appSettings?.currency ?: "د.ج",
+                        onCardClick = { selectedOrderForDetail = order },
+                        onOpenChat = { activeChatOrder = order },
+                        onOpenTracking = { selectedOrderForTracking = order },
+                        onOpenInvoice = { selectedOrderForInvoice = order }
                     )
                 }
             }
         }
+    }
+
+    // Chat and Call Log Sheet between Customer and Worker
+    if (activeChatOrder != null) {
+        OrderChatAndCallSheet(
+            order = activeChatOrder!!,
+            viewModel = viewModel,
+            currentUserRole = "CUSTOMER",
+            onDismiss = { activeChatOrder = null }
+        )
+    }
+
+    // 1. Live Worker Tracking Map Dialog
+    if (selectedOrderForTracking != null) {
+        AlertDialog(
+            onDismissRequest = { selectedOrderForTracking = null },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "تتبع مباشر لموقع الفني",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                    IconButton(onClick = { selectedOrderForTracking = null }) {
+                        Icon(Icons.Default.Close, contentDescription = "إغلاق")
+                    }
+                }
+            },
+            text = {
+                LiveWorkerTrackingCard(
+                    order = selectedOrderForTracking!!,
+                    onOpenChat = {
+                        val o = selectedOrderForTracking!!
+                        selectedOrderForTracking = null
+                        activeChatOrder = o
+                    },
+                    onCallWorker = {
+                        val phone = appSettings?.supportPhone ?: "+213555123456"
+                        LocationHelper.dialPhone(context, phone)
+                    }
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { selectedOrderForTracking = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = KhadamatiBluePrimary)
+                ) {
+                    Text("إغلاق التتبع")
+                }
+            }
+        )
+    }
+
+    // 2. Electronic Invoice & QR Dialog
+    if (selectedOrderForInvoice != null) {
+        OrderInvoiceDialog(
+            order = selectedOrderForInvoice!!,
+            currency = appSettings?.currency ?: "د.ج",
+            onDismiss = { selectedOrderForInvoice = null }
+        )
     }
 
     // Customer Order Detail Dialog
@@ -930,7 +1201,7 @@ fun CustomerOrdersScreen(
                         color = KhadamatiBluePrimary
                     )
                     Text(
-                        text = "التكلفة: ${order.servicePrice.toInt()} ${appSettings?.currency ?: "ر.س"}",
+                        text = "التكلفة: ${order.servicePrice.toInt()} ${appSettings?.currency ?: "د.ج"}",
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 13.sp
                     )
@@ -988,16 +1259,45 @@ fun CustomerOrdersScreen(
                 }
             },
             confirmButton = {
-                Button(
-                    onClick = {
-                        val phone = appSettings?.supportPhone ?: "+966501234567"
-                        LocationHelper.dialPhone(context, phone)
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = KhadamatiBluePrimary)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("اتصال بالدعم")
+                    if (order.status == "ASSIGNED" || order.status == "IN_PROGRESS") {
+                        FilledTonalButton(
+                            onClick = {
+                                selectedOrderForTracking = order
+                                selectedOrderForDetail = null
+                            }
+                        ) {
+                            Icon(Icons.Default.NearMe, contentDescription = null, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("تتبع")
+                        }
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            selectedOrderForInvoice = order
+                            selectedOrderForDetail = null
+                        }
+                    ) {
+                        Icon(Icons.Default.Receipt, contentDescription = null, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("الفاتورة")
+                    }
+
+                    Button(
+                        onClick = {
+                            activeChatOrder = order
+                            selectedOrderForDetail = null
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = KhadamatiBluePrimary)
+                    ) {
+                        Icon(Icons.Default.Chat, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("شات")
+                    }
                 }
             },
             dismissButton = {
@@ -1013,7 +1313,10 @@ fun CustomerOrdersScreen(
 fun CustomerOrderCard(
     order: OrderEntity,
     currency: String,
-    onCardClick: () -> Unit
+    onCardClick: () -> Unit,
+    onOpenChat: () -> Unit,
+    onOpenTracking: () -> Unit,
+    onOpenInvoice: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -1086,12 +1389,52 @@ fun CustomerOrderCard(
                     color = KhadamatiBlueDark
                 )
 
-                Text(
-                    text = "عرض التفاصيل والخريطة ←",
-                    fontSize = 12.sp,
-                    color = KhadamatiBluePrimary,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    // 1. Live Tracking Map Button
+                    if (order.status == "ASSIGNED" || order.status == "IN_PROGRESS") {
+                        FilledTonalButton(
+                            onClick = onOpenTracking,
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Icon(Icons.Default.NearMe, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text("تتبع الفني", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    // 2. Electronic Invoice Button
+                    IconButton(
+                        onClick = onOpenInvoice,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Receipt,
+                            contentDescription = "الفاتورة الإلكترونية",
+                            tint = KhadamatiBluePrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Button(
+                        onClick = onOpenChat,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.filledTonalButtonColors(),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(Icons.Default.Chat, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text("شات", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    OutlinedButton(
+                        onClick = onCardClick,
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text("التفاصيل", fontSize = 11.sp)
+                    }
+                }
             }
         }
     }
@@ -1105,10 +1448,10 @@ fun CustomerProfileScreen(
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val appSettings by viewModel.appSettings.collectAsStateWithLifecycle()
 
-    var name by remember { mutableStateOf(currentUser?.name ?: "محمد عبد الله") }
-    var phone by remember { mutableStateOf(currentUser?.phone ?: "+966541122334") }
-    var email by remember { mutableStateOf(currentUser?.email ?: "customer@gmail.com") }
-    var address by remember { mutableStateOf(currentUser?.defaultAddress ?: "حي النرجس، الرياض") }
+    var name by remember { mutableStateOf(currentUser?.name ?: "أمين بوعلام") }
+    var phone by remember { mutableStateOf(currentUser?.phone ?: "0555123456") }
+    var email by remember { mutableStateOf(currentUser?.email ?: "amine.boualem@gmail.com") }
+    var address by remember { mutableStateOf(currentUser?.defaultAddress ?: "ولاية الجزائر، بلدية حيدرة") }
     var isSaved by remember { mutableStateOf(false) }
 
     Column(

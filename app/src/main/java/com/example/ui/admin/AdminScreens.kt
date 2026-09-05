@@ -35,9 +35,11 @@ import androidx.compose.material.icons.filled.HomeRepairService
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
@@ -83,6 +85,10 @@ import com.example.data.model.AppSettingsEntity
 import com.example.data.model.OrderEntity
 import com.example.data.model.ServiceEntity
 import com.example.ui.components.InteractiveMapPicker
+import com.example.ui.components.CallLogItemCard
+import com.example.ui.components.LiveWorkerTrackingCard
+import com.example.ui.components.OrderChatAndCallSheet
+import com.example.ui.components.OrderInvoiceDialog
 import com.example.ui.components.OrderStatusBadge
 import com.example.ui.components.getServiceIcon
 import com.example.ui.components.getServiceIconBg
@@ -387,10 +393,14 @@ fun AdminOrdersScreen(
     viewModel: KhadamatiViewModel,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val allOrders by viewModel.allOrders.collectAsStateWithLifecycle()
     val filter by viewModel.adminOrderStatusFilter.collectAsStateWithLifecycle()
     val inspectingOrder by viewModel.adminInspectingOrder.collectAsStateWithLifecycle()
     val appSettings by viewModel.appSettings.collectAsStateWithLifecycle()
+    var activeChatOrder by remember { mutableStateOf<OrderEntity?>(null) }
+    var selectedOrderForTracking by remember { mutableStateOf<OrderEntity?>(null) }
+    var selectedOrderForInvoice by remember { mutableStateOf<OrderEntity?>(null) }
 
     val filteredOrders = allOrders.filter { order ->
         when (filter) {
@@ -477,25 +487,107 @@ fun AdminOrdersScreen(
                 items(filteredOrders, key = { it.id }) { order ->
                     AdminOrderCard(
                         order = order,
-                        currency = appSettings?.currency ?: "ر.س",
-                        onClick = { viewModel.setAdminInspectingOrder(order) }
+                        currency = appSettings?.currency ?: "د.ج",
+                        onClick = { viewModel.setAdminInspectingOrder(order) },
+                        onOpenChat = { activeChatOrder = order },
+                        onOpenTracking = { selectedOrderForTracking = order },
+                        onOpenInvoice = { selectedOrderForInvoice = order }
                     )
                 }
             }
         }
     }
 
+    // Chat and Call Log Sheet between Admin/Worker and Customer
+    if (activeChatOrder != null) {
+        OrderChatAndCallSheet(
+            order = activeChatOrder!!,
+            viewModel = viewModel,
+            currentUserRole = "ADMIN",
+            onDismiss = { activeChatOrder = null }
+        )
+    }
+
+    // 1. Live Worker Tracking Map Dialog
+    if (selectedOrderForTracking != null) {
+        AlertDialog(
+            onDismissRequest = { selectedOrderForTracking = null },
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "تتبع مباشر لموقع الفني والمركبة",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                    IconButton(onClick = { selectedOrderForTracking = null }) {
+                        Icon(Icons.Default.Check, contentDescription = "إغلاق")
+                    }
+                }
+            },
+            text = {
+                LiveWorkerTrackingCard(
+                    order = selectedOrderForTracking!!,
+                    onOpenChat = {
+                        val o = selectedOrderForTracking!!
+                        selectedOrderForTracking = null
+                        activeChatOrder = o
+                    },
+                    onCallWorker = {
+                        val phone = appSettings?.supportPhone ?: "+213555123456"
+                        LocationHelper.dialPhone(context, phone)
+                    }
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { selectedOrderForTracking = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = KhadamatiBluePrimary)
+                ) {
+                    Text("إغلاق نافذة التتبع")
+                }
+            }
+        )
+    }
+
+    // 2. Electronic Invoice Dialog
+    if (selectedOrderForInvoice != null) {
+        OrderInvoiceDialog(
+            order = selectedOrderForInvoice!!,
+            currency = appSettings?.currency ?: "د.ج",
+            onDismiss = { selectedOrderForInvoice = null }
+        )
+    }
+
     // Inspect Order Dialog with Live Map & Status Controls
     if (inspectingOrder != null) {
         AdminOrderInspectionDialog(
             order = inspectingOrder!!,
-            currency = appSettings?.currency ?: "ر.س",
+            currency = appSettings?.currency ?: "د.ج",
             onDismiss = { viewModel.setAdminInspectingOrder(null) },
             onUpdateStatus = { newStatus ->
                 viewModel.updateOrderStatus(inspectingOrder!!.id, newStatus)
             },
             onSaveAdminNotes = { notes, worker ->
                 viewModel.updateOrderAdminDetails(inspectingOrder!!.id, notes, worker)
+            },
+            onOpenChat = {
+                val ord = inspectingOrder!!
+                viewModel.setAdminInspectingOrder(null)
+                activeChatOrder = ord
+            },
+            onOpenTracking = {
+                val ord = inspectingOrder!!
+                viewModel.setAdminInspectingOrder(null)
+                selectedOrderForTracking = ord
+            },
+            onOpenInvoice = {
+                val ord = inspectingOrder!!
+                viewModel.setAdminInspectingOrder(null)
+                selectedOrderForInvoice = ord
             }
         )
     }
@@ -505,7 +597,10 @@ fun AdminOrdersScreen(
 fun AdminOrderCard(
     order: OrderEntity,
     currency: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onOpenChat: () -> Unit,
+    onOpenTracking: () -> Unit,
+    onOpenInvoice: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -597,27 +692,65 @@ fun AdminOrderCard(
                     color = KhadamatiBluePrimary
                 )
 
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = KhadamatiBluePrimary.copy(alpha = 0.1f)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
+                    // Live Worker Tracking
+                    if (order.status == "ASSIGNED" || order.status == "IN_PROGRESS") {
+                        FilledTonalButton(
+                            onClick = onOpenTracking,
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 7.dp, vertical = 4.dp)
+                        ) {
+                            Icon(Icons.Default.NearMe, contentDescription = null, modifier = Modifier.size(13.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text("تتبع", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    // Electronic Invoice
+                    IconButton(
+                        onClick = onOpenInvoice,
+                        modifier = Modifier.size(34.dp)
                     ) {
                         Icon(
-                            Icons.Default.Map,
-                            contentDescription = null,
+                            Icons.Default.Receipt,
+                            contentDescription = "فاتورة",
                             tint = KhadamatiBluePrimary,
-                            modifier = Modifier.size(14.dp)
+                            modifier = Modifier.size(18.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "عرض الموقع على الخريطة",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = KhadamatiBluePrimary
-                        )
+                    }
+
+                    FilledTonalButton(
+                        onClick = onOpenChat,
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 7.dp, vertical = 4.dp)
+                    ) {
+                        Icon(Icons.Default.Chat, contentDescription = null, modifier = Modifier.size(13.dp))
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text("شات", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = KhadamatiBluePrimary.copy(alpha = 0.1f)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Map,
+                                contentDescription = null,
+                                tint = KhadamatiBluePrimary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "الخريطة",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = KhadamatiBluePrimary
+                            )
+                        }
                     }
                 }
             }
@@ -631,7 +764,10 @@ fun AdminOrderInspectionDialog(
     currency: String,
     onDismiss: () -> Unit,
     onUpdateStatus: (String) -> Unit,
-    onSaveAdminNotes: (notes: String, worker: String) -> Unit
+    onSaveAdminNotes: (notes: String, worker: String) -> Unit,
+    onOpenChat: () -> Unit,
+    onOpenTracking: () -> Unit,
+    onOpenInvoice: () -> Unit
 ) {
     val context = LocalContext.current
     var adminNotes by remember { mutableStateOf(order.adminNotes) }
@@ -686,16 +822,26 @@ fun AdminOrderInspectionDialog(
                             color = Color.DarkGray
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            FilledTonalButton(
+                                onClick = onOpenChat,
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.weight(1.1f)
+                            ) {
+                                Icon(Icons.Default.Chat, contentDescription = null, modifier = Modifier.size(15.dp))
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text("شات وسجل", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
                             FilledTonalButton(
                                 onClick = { LocationHelper.dialPhone(context, order.customerPhone) },
                                 shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                modifier = Modifier.weight(1f)
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.weight(0.9f)
                             ) {
-                                Icon(Icons.Default.Call, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("اتصال هاتف", fontSize = 11.sp)
+                                Icon(Icons.Default.Call, contentDescription = null, modifier = Modifier.size(15.dp))
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text("هاتف", fontSize = 11.sp)
                             }
                             FilledTonalButton(
                                 onClick = {
@@ -706,11 +852,11 @@ fun AdminOrderInspectionDialog(
                                     )
                                 },
                                 shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                modifier = Modifier.weight(1f)
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.weight(0.9f)
                             ) {
-                                Icon(Icons.Default.Chat, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(Icons.Default.Chat, contentDescription = null, modifier = Modifier.size(15.dp))
+                                Spacer(modifier = Modifier.width(3.dp))
                                 Text("واتساب", fontSize = 11.sp)
                             }
                         }
@@ -869,11 +1015,39 @@ fun AdminOrderInspectionDialog(
             }
         },
         confirmButton = {
-            Button(
-                onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(containerColor = KhadamatiBluePrimary)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("إغلاق")
+                if (order.status == "ASSIGNED" || order.status == "IN_PROGRESS") {
+                    FilledTonalButton(onClick = onOpenTracking) {
+                        Icon(Icons.Default.NearMe, contentDescription = null, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("تتبع")
+                    }
+                }
+
+                OutlinedButton(onClick = onOpenInvoice) {
+                    Icon(Icons.Default.Receipt, contentDescription = null, modifier = Modifier.size(15.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("الفاتورة")
+                }
+
+                Button(
+                    onClick = onOpenChat,
+                    colors = ButtonDefaults.buttonColors(containerColor = KhadamatiBlueDark)
+                ) {
+                    Icon(Icons.Default.Chat, contentDescription = null, modifier = Modifier.size(15.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("شات")
+                }
+
+                Button(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.buttonColors(containerColor = KhadamatiBluePrimary)
+                ) {
+                    Text("إغلاق")
+                }
             }
         }
     )
@@ -1291,14 +1465,14 @@ fun AdminSettingsScreen(
     val context = LocalContext.current
     val appSettings by viewModel.appSettings.collectAsStateWithLifecycle()
 
-    var appName by remember(appSettings) { mutableStateOf(appSettings?.appName ?: "خدماتي") }
-    var supportPhone by remember(appSettings) { mutableStateOf(appSettings?.supportPhone ?: "+966501234567") }
-    var supportWhatsApp by remember(appSettings) { mutableStateOf(appSettings?.supportWhatsApp ?: "+966501234567") }
-    var supportEmail by remember(appSettings) { mutableStateOf(appSettings?.supportEmail ?: "support@khadamati.com") }
+    var appName by remember(appSettings) { mutableStateOf(appSettings?.appName ?: "Roi Service") }
+    var supportPhone by remember(appSettings) { mutableStateOf(appSettings?.supportPhone ?: "+213555123456") }
+    var supportWhatsApp by remember(appSettings) { mutableStateOf(appSettings?.supportWhatsApp ?: "+213555123456") }
+    var supportEmail by remember(appSettings) { mutableStateOf(appSettings?.supportEmail ?: "support@roiservice.dz") }
     var announcement by remember(appSettings) { mutableStateOf(appSettings?.announcementMessage ?: "") }
-    var currency by remember(appSettings) { mutableStateOf(appSettings?.currency ?: "ر.س") }
-    var workingHours by remember(appSettings) { mutableStateOf(appSettings?.workingHours ?: "8:00 ص - 11:30 م") }
-    var inspectionFee by remember(appSettings) { mutableStateOf(appSettings?.inspectionFee?.toInt()?.toString() ?: "35") }
+    var currency by remember(appSettings) { mutableStateOf(appSettings?.currency ?: "د.ج") }
+    var workingHours by remember(appSettings) { mutableStateOf(appSettings?.workingHours ?: "8:00 ص - 10:00 م") }
+    var inspectionFee by remember(appSettings) { mutableStateOf(appSettings?.inspectionFee?.toInt()?.toString() ?: "1000") }
 
     var isSavedToast by remember { mutableStateOf(false) }
 
@@ -1489,6 +1663,65 @@ fun AdminSettingsScreen(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
+        }
+
+        // ==========================================
+        // CALL LOGS ARCHIVE (حفظ جميع المكالمات)
+        // ==========================================
+        val allCallLogs by viewModel.allCallLogs.collectAsStateWithLifecycle()
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "أرشيف سجل المكالمات المحفوظة (${allCallLogs.size})",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = KhadamatiBluePrimary
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = KhadamatiSuccess.copy(alpha = 0.15f)
+                    ) {
+                        Text(
+                            text = "تزامن سحابي فوري",
+                            fontSize = 10.sp,
+                            color = KhadamatiSuccess,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+                Text(
+                    text = "يتم تسجيل كل مكالمة أو تواصل واتساب بين العملاء وعمال التوصيل والفنيين تلقائياً مع مدة المكالمة وتفاصيلها.",
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+
+                if (allCallLogs.isEmpty()) {
+                    Text(
+                        text = "لا توجد مكالمات مسجلة بعد في قاعدة البيانات.",
+                        fontSize = 12.sp,
+                        color = Color.LightGray,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                } else {
+                    allCallLogs.take(10).forEach { call ->
+                        CallLogItemCard(call = call)
+                    }
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(100.dp))

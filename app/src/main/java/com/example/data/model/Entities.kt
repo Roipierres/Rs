@@ -66,3 +66,28 @@ data class AppSettingsEntity(
     val inspectionFee: Double = 1000.0,
     val isEmergencyActive: Boolean = true
 )
+
+@Entity(tableName = "chat_messages")
+data class ChatMessageEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val orderNumber: String,
+    val senderId: Long,
+    val senderName: String,
+    val senderRole: String, // "CUSTOMER", "WORKER", "ADMIN"
+    val messageText: String,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "call_logs")
+data class CallLogEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val orderNumber: String,
+    val callerName: String,
+    val receiverName: String,
+    val receiverPhone: String,
+    val callType: String = "OUTGOING", // "OUTGOING", "INCOMING", "WHATSAPP"
+    val durationSeconds: Int = 0,
+    val status: String = "COMPLETED", // "COMPLETED", "MISSED", "INITIATED"
+    val notes: String = "",
+    val timestamp: Long = System.currentTimeMillis()
+)

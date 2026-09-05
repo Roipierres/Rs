@@ -1,13 +1,18 @@
 package com.example.data.repository
 
 import com.example.data.dao.AppSettingsDao
+import com.example.data.dao.CallLogDao
+import com.example.data.dao.ChatMessageDao
 import com.example.data.dao.OrderDao
 import com.example.data.dao.ServiceDao
 import com.example.data.dao.UserDao
 import com.example.data.model.AppSettingsEntity
+import com.example.data.model.CallLogEntity
+import com.example.data.model.ChatMessageEntity
 import com.example.data.model.OrderEntity
 import com.example.data.model.ServiceEntity
 import com.example.data.model.UserEntity
+import com.example.data.remote.FirestoreManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 
@@ -15,7 +20,9 @@ class KhadamatiRepository(
     private val userDao: UserDao,
     private val serviceDao: ServiceDao,
     private val orderDao: OrderDao,
-    private val appSettingsDao: AppSettingsDao
+    private val appSettingsDao: AppSettingsDao,
+    private val chatMessageDao: ChatMessageDao,
+    private val callLogDao: CallLogDao
 ) {
     // Services
     val allServices: Flow<List<ServiceEntity>> = serviceDao.getAllServices()
@@ -27,28 +34,150 @@ class KhadamatiRepository(
     suspend fun deleteService(service: ServiceEntity) = serviceDao.deleteService(service)
     suspend fun deleteServiceById(id: Long) = serviceDao.deleteServiceById(id)
 
-    // Orders
+    // Orders (with Real-Time Firestore Sync)
     val allOrders: Flow<List<OrderEntity>> = orderDao.getAllOrders()
     fun getCustomerOrders(customerId: Long): Flow<List<OrderEntity>> = orderDao.getOrdersByCustomer(customerId)
 
     suspend fun getOrderById(id: Long): OrderEntity? = orderDao.getOrderById(id)
-    suspend fun createOrder(order: OrderEntity): Long = orderDao.insertOrder(order)
-    suspend fun updateOrderStatus(orderId: Long, newStatus: String) = orderDao.updateOrderStatus(orderId, newStatus)
-    suspend fun updateOrder(order: OrderEntity) = orderDao.updateOrder(order)
+    
+    suspend fun createOrder(order: OrderEntity): Long {
+        val insertedId = orderDao.insertOrder(order)
+        val savedOrder = order.copy(id = insertedId)
+        // Store in Firestore for real-time cloud capabilities
+        FirestoreManager.saveServiceRequest(savedOrder)
+        return insertedId
+    }
+
+    suspend fun updateOrderStatus(orderId: Long, newStatus: String) {
+        orderDao.updateOrderStatus(orderId, newStatus)
+        val order = orderDao.getOrderById(orderId)
+        if (order != null) {
+            FirestoreManager.updateServiceRequestStatus(
+                orderNumber = order.orderNumber,
+                status = newStatus,
+                adminNotes = order.adminNotes,
+                assignedWorker = order.assignedWorker
+            )
+        }
+    }
+
+    suspend fun updateOrder(order: OrderEntity) {
+        orderDao.updateOrder(order)
+        FirestoreManager.saveServiceRequest(order)
+    }
+
     suspend fun deleteOrder(orderId: Long) = orderDao.deleteOrderById(orderId)
 
-    // Users
+    // Users (with Real-Time Location Firestore Sync)
     val allUsers: Flow<List<UserEntity>> = userDao.getAllUsers()
     suspend fun getUserById(id: Long): UserEntity? = userDao.getUserById(id)
     suspend fun getUserByEmail(email: String): UserEntity? = userDao.getUserByEmail(email)
     suspend fun getAdminUser(): UserEntity? = userDao.getAdminUser()
     suspend fun getLatestCustomer(): UserEntity? = userDao.getLatestCustomer()
-    suspend fun registerUser(user: UserEntity): Long = userDao.insertUser(user)
-    suspend fun updateUser(user: UserEntity) = userDao.updateUser(user)
+    
+    suspend fun registerUser(user: UserEntity): Long {
+        val id = userDao.insertUser(user)
+        FirestoreManager.saveUserLocation(
+            userId = id,
+            userName = user.name,
+            userPhone = user.phone,
+            latitude = user.defaultLatitude,
+            longitude = user.defaultLongitude,
+            address = user.defaultAddress,
+            role = user.role
+        )
+        return id
+    }
+
+    suspend fun updateUser(user: UserEntity) {
+        userDao.updateUser(user)
+        FirestoreManager.saveUserLocation(
+            userId = user.id,
+            userName = user.name,
+            userPhone = user.phone,
+            latitude = user.defaultLatitude,
+            longitude = user.defaultLongitude,
+            address = user.defaultAddress,
+            role = user.role
+        )
+    }
 
     // Settings
     val appSettings: Flow<AppSettingsEntity?> = appSettingsDao.getSettings()
     suspend fun updateAppSettings(settings: AppSettingsEntity) = appSettingsDao.insertOrUpdate(settings)
+
+    // Chat Messages (Room + Real-Time Firestore)
+    fun getOrderChatMessages(orderNumber: String): Flow<List<ChatMessageEntity>> =
+        chatMessageDao.getMessagesForOrder(orderNumber)
+
+    suspend fun sendChatMessage(
+        orderNumber: String,
+        senderId: Long,
+        senderName: String,
+        senderRole: String,
+        messageText: String
+    ): Long {
+        val msg = ChatMessageEntity(
+            orderNumber = orderNumber,
+            senderId = senderId,
+            senderName = senderName,
+            senderRole = senderRole,
+            messageText = messageText,
+            timestamp = System.currentTimeMillis()
+        )
+        val insertedId = chatMessageDao.insertMessage(msg)
+        FirestoreManager.sendChatMessage(
+            orderNumber = orderNumber,
+            senderId = senderId,
+            senderName = senderName,
+            senderRole = senderRole,
+            messageText = messageText,
+            timestamp = msg.timestamp
+        )
+        return insertedId
+    }
+
+    // Call Logs (Room + Real-Time Firestore)
+    fun getCallLogsForOrder(orderNumber: String): Flow<List<CallLogEntity>> =
+        callLogDao.getCallLogsForOrder(orderNumber)
+
+    val allCallLogs: Flow<List<CallLogEntity>> = callLogDao.getAllCallLogs()
+
+    suspend fun recordCallLog(
+        orderNumber: String,
+        callerName: String,
+        receiverName: String,
+        receiverPhone: String,
+        callType: String,
+        durationSeconds: Int = 0,
+        status: String = "COMPLETED",
+        notes: String = ""
+    ): Long {
+        val callLog = CallLogEntity(
+            orderNumber = orderNumber,
+            callerName = callerName,
+            receiverName = receiverName,
+            receiverPhone = receiverPhone,
+            callType = callType,
+            durationSeconds = durationSeconds,
+            status = status,
+            notes = notes,
+            timestamp = System.currentTimeMillis()
+        )
+        val id = callLogDao.insertCallLog(callLog)
+        FirestoreManager.saveCallLog(
+            orderNumber = orderNumber,
+            callerName = callerName,
+            receiverName = receiverName,
+            receiverPhone = receiverPhone,
+            callType = callType,
+            durationSeconds = durationSeconds,
+            status = status,
+            notes = notes,
+            timestamp = callLog.timestamp
+        )
+        return id
+    }
 
     // Initial Data Seeding
     suspend fun checkAndSeedDatabase() {

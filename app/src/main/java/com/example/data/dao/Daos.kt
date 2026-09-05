@@ -7,6 +7,8 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.data.model.AppSettingsEntity
+import com.example.data.model.CallLogEntity
+import com.example.data.model.ChatMessageEntity
 import com.example.data.model.OrderEntity
 import com.example.data.model.ServiceEntity
 import com.example.data.model.UserEntity
@@ -94,4 +96,28 @@ interface AppSettingsDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdate(settings: AppSettingsEntity)
+}
+
+@Dao
+interface ChatMessageDao {
+    @Query("SELECT * FROM chat_messages WHERE orderNumber = :orderNumber ORDER BY timestamp ASC")
+    fun getMessagesForOrder(orderNumber: String): Flow<List<ChatMessageEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMessage(message: ChatMessageEntity): Long
+
+    @Query("DELETE FROM chat_messages WHERE orderNumber = :orderNumber")
+    suspend fun deleteMessagesForOrder(orderNumber: String)
+}
+
+@Dao
+interface CallLogDao {
+    @Query("SELECT * FROM call_logs WHERE orderNumber = :orderNumber ORDER BY timestamp DESC")
+    fun getCallLogsForOrder(orderNumber: String): Flow<List<CallLogEntity>>
+
+    @Query("SELECT * FROM call_logs ORDER BY timestamp DESC")
+    fun getAllCallLogs(): Flow<List<CallLogEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCallLog(callLog: CallLogEntity): Long
 }
