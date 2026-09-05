@@ -4,17 +4,20 @@ workflows:
     max_build_duration: 30
     instance_type: mac_mini_m2
     scripts:
-      - name: Locate and Build Android APK
+      - name: Locate Flutter Project and Build APK
         script: |
-          # البحث التلقائي عن مسار مجلد أندرويد
-          GRADLEW_PATH=$(find . -name "gradlew" -type f | head -n 1)
-          if [ -n "$GRADLEW_PATH" ]; then
-            cd "$(dirname "$GRADLEW_PATH")"
-            chmod +x gradlew
-            ./gradlew assembleRelease || ./gradlew assembleDebug
-          else
-            echo "لم يتم العثور على gradlew، جاري محاولة البناء عبر Flutter..."
+          # البحث عن مكان ملف pubspec.yaml في أي مجلد
+          PUBSPEC_PATH=$(find . -name "pubspec.yaml" -type f | head -n 1)
+          
+          if [ -n "$PUBSPEC_PATH" ]; then
+            PROJECT_DIR=$(dirname "$PUBSPEC_PATH")
+            echo "تم العثور على مشروع Flutter في المسار: $PROJECT_DIR"
+            cd "$PROJECT_DIR"
+            flutter packages get
             flutter build apk --debug
+          else
+            echo "خطأ: لم يتم العثور على أي ملف pubspec.yaml في المستودع"
+            exit 1
           fi
     artifacts:
       - "**/build/outputs/**/*.apk"
