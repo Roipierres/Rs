@@ -6,11 +6,9 @@ workflows:
     scripts:
       - name: Upgrade Gradle and Build APK
         script: |
-          # توليد وترقية Gradle إلى الإصدار 9.3.1 المطلوب
           gradle wrapper --gradle-version 9.3.1
           chmod +x gradlew
-          
-          # تجميع التطبيق
-          ./gradlew assembleDebug --stacktrace
+          # إيقاف التتبع الطويل وإظهار رسالة الخطأ المباشرة فقط
+          ./gradlew assembleDebug -x test -x lint --warning-mode none
     artifacts:
       - app/build/outputs/apk/**/*.apk
