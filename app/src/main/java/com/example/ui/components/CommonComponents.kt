@@ -1,7 +1,17 @@
 package com.example.ui.components
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -53,19 +64,28 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.KhadamatiAmberTertiary
 import com.example.ui.theme.KhadamatiBlueDark
 import com.example.ui.theme.KhadamatiBluePrimary
 import com.example.ui.theme.KhadamatiError
+import com.example.ui.theme.KhadamatiNeonAmber
+import com.example.ui.theme.KhadamatiNeonBlue
+import com.example.ui.theme.KhadamatiNeonCyan
 import com.example.ui.theme.KhadamatiSecondaryTeal
 import com.example.ui.theme.KhadamatiSuccess
 import com.example.util.AppNotification
@@ -262,28 +282,30 @@ fun KhadamatiTopAppBar(
                 }
             }
 
-            // Quick role switcher button
-            FilledTonalButton(
-                onClick = onToggleRole,
-                shape = RoundedCornerShape(20.dp),
-                colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
-                    containerColor = Color.White.copy(alpha = 0.18f),
-                    contentColor = Color.White
-                ),
-                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                modifier = Modifier.padding(end = 6.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.SwapHoriz,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = if (currentRole == "ADMIN") "الزبون" else "المدير",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
+            // Quick role switcher button: ONLY visible when logged in as ADMIN
+            if (currentRole == "ADMIN") {
+                FilledTonalButton(
+                    onClick = onToggleRole,
+                    shape = RoundedCornerShape(20.dp),
+                    colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
+                        containerColor = Color.White.copy(alpha = 0.22f),
+                        contentColor = Color.White
+                    ),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.padding(end = 6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.SwapHoriz,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "واجهة الزبون",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
     )
@@ -316,7 +338,10 @@ fun InAppNotificationSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
                     Icon(
                         Icons.Default.Notifications,
                         contentDescription = null,
@@ -326,18 +351,26 @@ fun InAppNotificationSheet(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "مركز الإشعارات والتنبيهات",
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                Row {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.wrapContentWidth()
+                ) {
                     if (notifications.isNotEmpty()) {
-                        TextButton(onClick = onClearAll) {
+                        TextButton(
+                            onClick = onClearAll,
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
                             Icon(Icons.Default.ClearAll, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("مسح الكل", fontSize = 12.sp)
+                            Text("مسح الكل", fontSize = 12.sp, maxLines = 1)
                         }
                     }
                     IconButton(onClick = onDismiss) {
@@ -445,5 +478,227 @@ fun KadamatiNotificationTint(type: String): Color {
         "PROMO" -> Color(0xFFFFF8E1)
         else -> Color(0xFFEDE7F6)
     }
+}
+
+/**
+ * Glowing Neon Divider with animated luminous beam and central radiant flare.
+ * Highlights clean separation between orders, cards, and sections across the app.
+ */
+@Composable
+fun GlowingNeonDivider(
+    modifier: Modifier = Modifier,
+    glowColor: Color = KhadamatiNeonCyan,
+    secondaryGlowColor: Color = KhadamatiBluePrimary,
+    thickness: Dp = 1.8.dp,
+    showCenterFlare: Boolean = true,
+    animated: Boolean = true
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "neon_glow_transition")
+    val glowAlpha by if (animated) {
+        infiniteTransition.animateFloat(
+            initialValue = 0.5f,
+            targetValue = 1.0f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 1500, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "neon_alpha"
+        )
+    } else {
+        remember { mutableFloatStateOf(0.85f) }
+    }
+
+    val widthScale by if (animated) {
+        infiniteTransition.animateFloat(
+            initialValue = 0.88f,
+            targetValue = 1.0f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 2200, easing = LinearOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "neon_width"
+        )
+    } else {
+        remember { mutableFloatStateOf(1f) }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        // 1. Diffuse radiant outer halo
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.96f)
+                .height(thickness * 5)
+                .clip(CircleShape)
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            Color.Transparent,
+                            glowColor.copy(alpha = 0.04f * glowAlpha),
+                            glowColor.copy(alpha = 0.32f * glowAlpha),
+                            secondaryGlowColor.copy(alpha = 0.45f * glowAlpha),
+                            glowColor.copy(alpha = 0.32f * glowAlpha),
+                            glowColor.copy(alpha = 0.04f * glowAlpha),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+
+        // 2. High-intensity sharp radiant core beam
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(widthScale)
+                .height(thickness)
+                .clip(RoundedCornerShape(thickness / 2))
+                .background(
+                    Brush.horizontalGradient(
+                        listOf(
+                            Color.Transparent,
+                            glowColor.copy(alpha = 0.25f),
+                            glowColor.copy(alpha = 0.85f * glowAlpha),
+                            Color.White.copy(alpha = 0.95f * glowAlpha),
+                            secondaryGlowColor.copy(alpha = 0.9f * glowAlpha),
+                            glowColor.copy(alpha = 0.85f * glowAlpha),
+                            glowColor.copy(alpha = 0.25f),
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+
+        // 3. Central glowing flare diamond / particle
+        if (showCenterFlare) {
+            Box(
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(13.dp)
+                        .clip(CircleShape)
+                        .background(glowColor.copy(alpha = 0.4f * glowAlpha))
+                )
+                Box(
+                    modifier = Modifier
+                        .size(5.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = glowAlpha))
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Luminous Section Header with glowing neon accent lines on both sides
+ */
+@Composable
+fun GlowingSectionHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    icon: ImageVector? = null,
+    glowColor: Color = KhadamatiNeonCyan
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Leading small neon line
+            Box(
+                modifier = Modifier
+                    .width(18.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(1.5.dp))
+                    .background(glowColor)
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = glowColor,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+            }
+
+            Text(
+                text = title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            // Trailing fading gradient neon line
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(2.dp)
+                    .clip(RoundedCornerShape(1.dp))
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                glowColor.copy(alpha = 0.7f),
+                                glowColor.copy(alpha = 0.2f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+        }
+
+        if (subtitle != null) {
+            Text(
+                text = subtitle,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 26.dp, top = 2.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Creates a glowing border stroke for cards to give them high definition on dark and light backgrounds
+ */
+@Composable
+fun glowingCardBorder(
+    glowColor: Color = KhadamatiNeonCyan,
+    strokeWidth: Dp = 1.2.dp,
+    alpha: Float = 0.65f
+): BorderStroke {
+    val isDark = isSystemInDarkTheme()
+    val colors = if (isDark) {
+        listOf(
+            glowColor.copy(alpha = alpha),
+            KhadamatiBluePrimary.copy(alpha = alpha * 0.7f),
+            glowColor.copy(alpha = alpha * 0.35f),
+            Color.Transparent
+        )
+    } else {
+        listOf(
+            KhadamatiBluePrimary.copy(alpha = 0.35f),
+            glowColor.copy(alpha = 0.55f),
+            KhadamatiBluePrimary.copy(alpha = 0.18f)
+        )
+    }
+    return BorderStroke(
+        width = strokeWidth,
+        brush = Brush.linearGradient(colors)
+    )
 }
 

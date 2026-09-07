@@ -258,8 +258,8 @@ class KhadamatiRepository(
                     description = "كشف وتصليح تسربات المياه، استبدال المحابس، تسليك المجاري وتركيب الخلاطات بأحدث المعدات.",
                     iconType = "plumbing",
                     isActive = true,
-                    rating = 4.9,
-                    reviewCount = 124
+                    rating = 5.0,
+                    reviewCount = 142
                 ),
                 ServiceEntity(
                     title = "أعمال الكهرباء والإنارة",
@@ -269,8 +269,8 @@ class KhadamatiRepository(
                     description = "فحص التوصيلات الكهربائية، إصلاح الشورت، تركيب لوحات التوزيع وتركيب الثريات والسبوت لايت.",
                     iconType = "electrical",
                     isActive = true,
-                    rating = 4.8,
-                    reviewCount = 98
+                    rating = 5.0,
+                    reviewCount = 118
                 ),
                 ServiceEntity(
                     title = "صيانة وتنظيف التكييف (سبليت ومركزي)",
@@ -291,8 +291,8 @@ class KhadamatiRepository(
                     description = "تنظيف عميق للأرضيات، النوافذ، المطابخ والحمامات وتلميع الرخام بمواد تعقيم آمنة.",
                     iconType = "cleaning",
                     isActive = true,
-                    rating = 4.9,
-                    reviewCount = 165
+                    rating = 5.0,
+                    reviewCount = 185
                 ),
                 ServiceEntity(
                     title = "دهانات وتشطيبات وديكور",
@@ -302,8 +302,8 @@ class KhadamatiRepository(
                     description = "معالجة التشققات، طلاء الجدران بأجود أنواع الدهانات، ورق جدران وبديل الخشب والرخام.",
                     iconType = "painting",
                     isActive = true,
-                    rating = 4.7,
-                    reviewCount = 76
+                    rating = 5.0,
+                    reviewCount = 96
                 ),
                 ServiceEntity(
                     title = "نقل وتركيب الأثاث المنزلي",
@@ -313,8 +313,8 @@ class KhadamatiRepository(
                     description = "فك وتركيب غرف النوم والمطابخ، تغليف احترافي للأثاث الحساس ونقل آمن عبر شاحنات مجهزة.",
                     iconType = "moving",
                     isActive = true,
-                    rating = 4.8,
-                    reviewCount = 89
+                    rating = 5.0,
+                    reviewCount = 112
                 ),
                 ServiceEntity(
                     title = "صيانة الحاسوب والشبكات المنزلية",
@@ -324,8 +324,8 @@ class KhadamatiRepository(
                     description = "تهيئة مودم الألياف البصرية ومقويات الواي فاي، وتمديد كوابل الشبكة، وفحص الكمبيوتر.",
                     iconType = "tech",
                     isActive = true,
-                    rating = 4.9,
-                    reviewCount = 54
+                    rating = 5.0,
+                    reviewCount = 74
                 ),
                 ServiceEntity(
                     title = "غسيل وتلميع السيارات المتنقل",
@@ -335,29 +335,34 @@ class KhadamatiRepository(
                     description = "غسيل بخار خارجي وتنظيف داخلي بالمكنسة، تعطير وتلميع الإطارات أمام بيتك مباشرة.",
                     iconType = "car",
                     isActive = true,
-                    rating = 4.8,
-                    reviewCount = 143
+                    rating = 5.0,
+                    reviewCount = 156
                 )
             )
 
             defaultServices.forEach { serviceDao.insertService(it) }
         } else {
-            // Update prices if they were in old currency (< 500)
+            // Ensure all existing services have 5-star ratings as requested by user
             existingServices.forEach { s ->
-                if (s.price < 500.0) {
-                    val updatedPrice = when {
-                        s.title.contains("سباكة") -> 2500.0
-                        s.title.contains("كهرباء") -> 2800.0
-                        s.title.contains("تكييف") -> 3500.0
-                        s.title.contains("تنظيف") -> 4500.0
-                        s.title.contains("دهان") -> 6000.0
-                        s.title.contains("نقل") -> 8000.0
-                        s.title.contains("حاسوب") || s.title.contains("تقنية") -> 2500.0
-                        s.title.contains("سيارات") || s.title.contains("غسيل") -> 1500.0
-                        else -> s.price * 25.0
-                    }
-                    serviceDao.updateService(s.copy(price = updatedPrice))
+                val updatedPrice = when {
+                    s.price < 500.0 && s.title.contains("سباكة") -> 2500.0
+                    s.price < 500.0 && s.title.contains("كهرباء") -> 2800.0
+                    s.price < 500.0 && s.title.contains("تكييف") -> 3500.0
+                    s.price < 500.0 && s.title.contains("تنظيف") -> 4500.0
+                    s.price < 500.0 && s.title.contains("دهان") -> 6000.0
+                    s.price < 500.0 && s.title.contains("نقل") -> 8000.0
+                    s.price < 500.0 && s.title.contains("حاسوب") -> 2500.0
+                    s.price < 500.0 && s.title.contains("سيارات") -> 1500.0
+                    s.price < 500.0 -> 2500.0
+                    else -> s.price
                 }
+                serviceDao.updateService(
+                    s.copy(
+                        rating = 5.0,
+                        price = updatedPrice,
+                        reviewCount = if (s.reviewCount < 50) 80 else s.reviewCount
+                    )
+                )
             }
         }
 

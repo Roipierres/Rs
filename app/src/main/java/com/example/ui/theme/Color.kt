@@ -29,6 +29,12 @@ val KhadamatiOutlineLight = Color(0xFFE0E3EB)
 
 // Dark Theme Variants
 val KhadamatiBlueDarkPrimary = Color(0xFF90CAF9)
-val KhadamatiSurfaceDark = Color(0xFF121820)
-val KhadamatiCardDark = Color(0xFF1B2430)
-val KhadamatiOutlineDark = Color(0xFF2D3A4B)
+val KhadamatiSurfaceDark = Color(0xFF0F172A)
+val KhadamatiCardDark = Color(0xFF1E293B)
+val KhadamatiOutlineDark = Color(0xFF334155)
+
+// Glowing Neon Accents
+val KhadamatiNeonCyan = Color(0xFF00E5FF)
+val KhadamatiNeonBlue = Color(0xFF3B82F6)
+val KhadamatiNeonAmber = Color(0xFFFFB300)
+val KhadamatiNeonPurple = Color(0xFFA855F7)

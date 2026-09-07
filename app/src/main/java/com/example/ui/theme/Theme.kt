@@ -13,10 +13,10 @@ import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme =
   darkColorScheme(
-    primary = KhadamatiBlueDarkPrimary,
-    onPrimary = Color(0xFF003258),
-    primaryContainer = KhadamatiBlueDark,
-    onPrimaryContainer = KhadamatiBlueLight,
+    primary = KhadamatiNeonCyan,
+    onPrimary = Color(0xFF001F2B),
+    primaryContainer = Color(0xFF00384D),
+    onPrimaryContainer = Color(0xFFBBE9FF),
     secondary = KhadamatiSecondaryTeal,
     onSecondary = Color.White,
     secondaryContainer = Color(0xFF004D40),
@@ -24,6 +24,9 @@ private val DarkColorScheme =
     tertiary = KhadamatiAmberTertiary,
     background = KhadamatiSurfaceDark,
     surface = KhadamatiCardDark,
+    surfaceVariant = Color(0xFF1E293B),
+    onSurface = Color(0xFFF8FAFC),
+    onSurfaceVariant = Color(0xFFCBD5E1),
     outline = KhadamatiOutlineDark
   )
 
@@ -40,14 +43,17 @@ private val LightColorScheme =
     tertiary = KhadamatiAmberTertiary,
     background = KhadamatiSurfaceLight,
     surface = KhadamatiCardLight,
+    surfaceVariant = Color(0xFFF1F5F9),
+    onSurface = Color(0xFF0F172A),
+    onSurfaceVariant = Color(0xFF475569),
     outline = KhadamatiOutlineLight
   )
 
 @Composable
 fun MyApplicationTheme(
   darkTheme: Boolean = isSystemInDarkTheme(),
-  // Dynamic color is available on Android 12+
-  dynamicColor: Boolean = true,
+  // Disable dynamic color so custom rich brand styling & glowing neon accents remain consistent
+  dynamicColor: Boolean = false,
   content: @Composable () -> Unit,
 ) {
   val colorScheme =

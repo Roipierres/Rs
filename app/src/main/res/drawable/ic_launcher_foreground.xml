@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:width="66dp"
-        android:height="66dp"
-        android:drawable="@drawable/rs_logo_foreground_1788542830813"
+        android:width="72dp"
+        android:height="72dp"
+        android:drawable="@drawable/ic_roi_service_fg"
         android:gravity="center" />
 </layer-list>
 

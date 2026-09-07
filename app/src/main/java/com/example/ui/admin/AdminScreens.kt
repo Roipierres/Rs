@@ -16,9 +16,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,6 +45,8 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -78,12 +83,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.AppSettingsEntity
 import com.example.data.model.OrderEntity
 import com.example.data.model.ServiceEntity
+import com.example.ui.components.GlowingNeonDivider
+import com.example.ui.components.GlowingSectionHeader
 import com.example.ui.components.InteractiveMapPicker
 import com.example.ui.components.CallLogItemCard
 import com.example.ui.components.LiveWorkerTrackingCard
@@ -93,10 +101,14 @@ import com.example.ui.components.OrderStatusBadge
 import com.example.ui.components.getServiceIcon
 import com.example.ui.components.getServiceIconBg
 import com.example.ui.components.getServiceIconTint
+import com.example.ui.components.glowingCardBorder
 import com.example.ui.theme.KhadamatiAmberTertiary
 import com.example.ui.theme.KhadamatiBlueDark
 import com.example.ui.theme.KhadamatiBluePrimary
 import com.example.ui.theme.KhadamatiError
+import com.example.ui.theme.KhadamatiNeonAmber
+import com.example.ui.theme.KhadamatiNeonBlue
+import com.example.ui.theme.KhadamatiNeonCyan
 import com.example.ui.theme.KhadamatiSecondaryTeal
 import com.example.ui.theme.KhadamatiSuccess
 import com.example.ui.viewmodel.KhadamatiViewModel
@@ -116,14 +128,14 @@ fun AdminOverviewScreen(
     val inProgressCount = allOrders.count { it.status == "IN_PROGRESS" || it.status == "CONFIRMED" }
     val completedCount = allOrders.count { it.status == "COMPLETED" }
     val totalRevenue = allOrders.filter { it.status == "COMPLETED" }.sumOf { it.servicePrice }
-    val currency = appSettings?.currency ?: "ر.س"
+    val currency = appSettings?.currency ?: "د.ج"
 
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
         contentPadding = PaddingValues(bottom = 90.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
             Spacer(modifier = Modifier.height(10.dp))
@@ -132,46 +144,77 @@ fun AdminOverviewScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "لوحة قيادة المدير",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "متابعة الطلبات، المواقع على الخريطة، والخدمات",
+                        text = "متابعة الطلبات والمواقع والخدمات",
                         fontSize = 12.sp,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                if (newOrdersCount > 0) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = Color(0xFFFFEBEE)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier.wrapContentWidth()
+                ) {
+                    if (newOrdersCount > 0) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color(0xFFFFEBEE),
+                            modifier = Modifier.wrapContentWidth()
                         ) {
-                            Icon(
-                                Icons.Default.NotificationsActive,
-                                contentDescription = null,
-                                tint = KhadamatiError,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "$newOrdersCount طلبات جديدة!",
-                                color = KhadamatiError,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.NotificationsActive,
+                                    contentDescription = null,
+                                    tint = KhadamatiError,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    text = "$newOrdersCount جديدة",
+                                    color = KhadamatiError,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
                         }
+                    }
+
+                    OutlinedButton(
+                        onClick = { viewModel.logoutAdmin() },
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = KhadamatiBluePrimary)
+                    ) {
+                        Icon(Icons.Default.SwapHoriz, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("الزبون", fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
                     }
                 }
             }
+
+            GlowingNeonDivider(
+                modifier = Modifier.padding(vertical = 6.dp),
+                glowColor = KhadamatiNeonCyan,
+                secondaryGlowColor = KhadamatiNeonAmber,
+                thickness = 1.5.dp
+            )
         }
 
         // Metrics Grid (2x2)
@@ -237,7 +280,9 @@ fun AdminOverviewScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = KhadamatiBluePrimary)
+                colors = CardDefaults.cardColors(containerColor = KhadamatiBluePrimary),
+                border = glowingCardBorder(glowColor = KhadamatiNeonCyan, strokeWidth = 1.2.dp, alpha = 0.5f),
+                elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
             ) {
                 Row(
                     modifier = Modifier
@@ -274,6 +319,16 @@ fun AdminOverviewScreen(
                     }
                 }
             }
+        }
+
+        // Luminous Neon Divider
+        item {
+            GlowingNeonDivider(
+                modifier = Modifier.padding(vertical = 4.dp),
+                glowColor = KhadamatiNeonAmber,
+                secondaryGlowColor = KhadamatiNeonCyan,
+                thickness = 1.4.dp
+            )
         }
 
         // Fast Action Shortcuts
@@ -440,7 +495,10 @@ fun AdminOrdersScreen(
         Spacer(modifier = Modifier.height(10.dp))
 
         // Filters Row
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 4.dp)
+        ) {
             items(filterOptions) { (key, title) ->
                 FilterChip(
                     selected = filter == key,
@@ -482,9 +540,9 @@ fun AdminOrdersScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = 90.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(filteredOrders, key = { it.id }) { order ->
+                itemsIndexed(filteredOrders, key = { _, order -> order.id }) { index, order ->
                     AdminOrderCard(
                         order = order,
                         currency = appSettings?.currency ?: "د.ج",
@@ -493,6 +551,15 @@ fun AdminOrdersScreen(
                         onOpenTracking = { selectedOrderForTracking = order },
                         onOpenInvoice = { selectedOrderForInvoice = order }
                     )
+                    if (index < filteredOrders.lastIndex) {
+                        GlowingNeonDivider(
+                            modifier = Modifier.padding(vertical = 4.dp),
+                            glowColor = KhadamatiNeonAmber,
+                            secondaryGlowColor = KhadamatiNeonCyan,
+                            thickness = 1.6.dp,
+                            showCenterFlare = true
+                        )
+                    }
                 }
             }
         }
@@ -602,13 +669,17 @@ fun AdminOrderCard(
     onOpenTracking: () -> Unit,
     onOpenInvoice: () -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isDark) Color(0xFF1E293B) else MaterialTheme.colorScheme.surface
+        ),
+        border = glowingCardBorder(glowColor = KhadamatiNeonAmber, strokeWidth = 1.2.dp, alpha = 0.65f),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
@@ -617,11 +688,18 @@ fun AdminOrderCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(KhadamatiNeonAmber)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = order.orderNumber,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp,
-                        color = KhadamatiBluePrimary
+                        color = if (isDark) KhadamatiNeonCyan else KhadamatiBluePrimary
                     )
                     if (order.status == "NEW") {
                         Spacer(modifier = Modifier.width(6.dp))
@@ -654,12 +732,17 @@ fun AdminOrderCard(
             Spacer(modifier = Modifier.height(4.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Person, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(14.dp))
+                Icon(
+                    Icons.Default.Person,
+                    contentDescription = null,
+                    tint = if (isDark) Color(0xFF94A3B8) else Color.Gray,
+                    modifier = Modifier.size(14.dp)
+                )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = "${order.customerName} (${order.customerPhone})",
                     fontSize = 12.sp,
-                    color = Color.DarkGray
+                    color = if (isDark) Color(0xFFE2E8F0) else Color.DarkGray
                 )
             }
 
@@ -667,16 +750,39 @@ fun AdminOrderCard(
 
             // Coordinates badge & Address
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.LocationOn, contentDescription = null, tint = KhadamatiSecondaryTeal, modifier = Modifier.size(14.dp))
+                Icon(
+                    Icons.Default.LocationOn,
+                    contentDescription = null,
+                    tint = if (isDark) KhadamatiNeonCyan else KhadamatiSecondaryTeal,
+                    modifier = Modifier.size(14.dp)
+                )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = "${order.addressText} [${String.format("%.4f", order.latitude)}, ${String.format("%.4f", order.longitude)}]",
                     fontSize = 11.sp,
-                    color = KhadamatiBlueDark,
+                    color = if (isDark) Color(0xFF93C5FD) else KhadamatiBlueDark,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1
                 )
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Internal subtle luminous divider line
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(
+                        androidx.compose.ui.graphics.Brush.horizontalGradient(
+                            listOf(
+                                Color.Transparent,
+                                (if (isDark) KhadamatiNeonAmber else KhadamatiBluePrimary).copy(alpha = 0.35f),
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -689,7 +795,7 @@ fun AdminOrderCard(
                     text = "${order.servicePrice.toInt()} $currency",
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 15.sp,
-                    color = KhadamatiBluePrimary
+                    color = if (isDark) KhadamatiNeonAmber else KhadamatiBluePrimary
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -1720,6 +1826,52 @@ fun AdminSettingsScreen(
                     allCallLogs.take(10).forEach { call ->
                         CallLogItemCard(call = call)
                     }
+                }
+            }
+        }
+
+        // ==========================================
+        // EXIT ADMIN / LOCK DASHBOARD CARD
+        // ==========================================
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = KhadamatiError,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "قفل لوحة التحكم والخروج لحساب الزبون",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = KhadamatiError
+                    )
+                }
+                Text(
+                    text = "عند قفل لوحة التحكم، ستختفي لوحة الإدارة تماماً ولن تظهر للزبون بأي شكل حتى يتم تسجيل الدخول مجدداً بحسابك الشخصي (bahrinho93@gmail.com).",
+                    fontSize = 12.sp,
+                    color = Color.DarkGray,
+                    lineHeight = 16.sp
+                )
+                Button(
+                    onClick = { viewModel.logoutAdmin() },
+                    colors = ButtonDefaults.buttonColors(containerColor = KhadamatiError),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("قفل لوحة الإدارة والعودة لتطبيق الزبون")
                 }
             }
         }

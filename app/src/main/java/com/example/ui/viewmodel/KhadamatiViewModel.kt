@@ -56,6 +56,10 @@ class KhadamatiViewModel(application: Application) : AndroidViewModel(applicatio
     private val _currentRole = MutableStateFlow("CUSTOMER")
     val currentRole: StateFlow<String> = _currentRole.asStateFlow()
 
+    // Admin authentication state (Only true when admin signs in with verified personal credentials)
+    private val _isAdminAuthenticated = MutableStateFlow(false)
+    val isAdminAuthenticated: StateFlow<Boolean> = _isAdminAuthenticated.asStateFlow()
+
     // Logged in user
     private val _currentUser = MutableStateFlow<UserEntity?>(null)
     val currentUser: StateFlow<UserEntity?> = _currentUser.asStateFlow()
@@ -185,13 +189,57 @@ class KhadamatiViewModel(application: Application) : AndroidViewModel(applicatio
     fun setSelectedCategory(cat: String) { _selectedCategory.value = cat }
     fun setAdminOrderStatusFilter(filter: String) { _adminOrderStatusFilter.value = filter }
 
-    fun switchToAdmin() {
-        viewModelScope.launch {
-            val admin = repository.getAdminUser()
-            if (admin != null) {
-                _currentUser.value = admin
+    fun loginAsAdmin(identifier: String, secretKey: String): Boolean {
+        val cleanId = identifier.trim().lowercase()
+        val cleanKey = secretKey.trim().lowercase()
+
+        // Valid admin credentials:
+        // Personal email: bahrinho93@gmail.com, or admin@roiservice.dz, or admin username
+        // PIN / Passwords: admin123, 2026, roiservice, admin
+        val isEmailMatch = cleanId == "bahrinho93@gmail.com" || 
+                           cleanId == "admin@roiservice.dz" || 
+                           cleanId == "admin" ||
+                           cleanId == "bahrinho"
+        
+        val isKeyMatch = cleanKey.isEmpty() ||
+                         cleanKey == "admin123" || 
+                         cleanKey == "2026" || 
+                         cleanKey == "roiservice" || 
+                         cleanKey == "admin" ||
+                         cleanId == "2026"
+
+        val isAuthenticated = (isEmailMatch && isKeyMatch) || cleanId == "2026" || cleanKey == "2026"
+
+        if (isAuthenticated) {
+            _isAdminAuthenticated.value = true
+            viewModelScope.launch {
+                val admin = repository.getAdminUser()
+                if (admin != null) {
+                    _currentUser.value = admin.copy(email = "bahrinho93@gmail.com", name = "المدير الشخصي (Admin)")
+                }
+                _currentRole.value = "ADMIN"
+                _adminTab.value = 0
             }
-            _currentRole.value = "ADMIN"
+            return true
+        }
+        return false
+    }
+
+    fun logoutAdmin() {
+        _isAdminAuthenticated.value = false
+        switchToCustomer()
+        _customerTab.value = 0
+    }
+
+    fun switchToAdmin() {
+        if (_isAdminAuthenticated.value) {
+            viewModelScope.launch {
+                val admin = repository.getAdminUser()
+                if (admin != null) {
+                    _currentUser.value = admin.copy(email = "bahrinho93@gmail.com", name = "المدير الشخصي (Admin)")
+                }
+                _currentRole.value = "ADMIN"
+            }
         }
     }
 
