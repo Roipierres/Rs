@@ -25,7 +25,9 @@ jobs:
           gradle-version: '9.3.1'
 
       - name: Build APK with Gradle
-        run: gradle assembleDebug --stacktrace
+        env:
+          GRADLE_OPTS: "-Djava.awt.headless=true -Xmx4096m -XX:MaxMetaspaceSize=1024m"
+        run: gradle assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
