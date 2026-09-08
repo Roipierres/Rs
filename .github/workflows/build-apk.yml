@@ -25,23 +25,52 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      # توليد ملف debug.keystore تلقائياً لحل خطأ validateSigningDebug
+      # 1. توليد مفتاح التوقيع التجريبي
       - name: Generate debug keystore
         run: |
           keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
-      # إنشاء ملف google-services.json وهمي لتجاوز خطأ missing google-services
-      - name: Create mock google-services.json if missing
+      # 2. إنشاء google-services.json بمعرّف الحزمة الصحيح للمشروع
+      - name: Setup google-services.json
         run: |
-          if [ ! -f "app/google-services.json" ]; then
-            echo '{"project_info":{"project_number":"0","project_id":"mock","storage_bucket":"mock.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:0:android:0","android_client_info":{"package_name":"com.example.app"}},"oauth_client":[],"api_key":[{"current_key":"mock_key"}],"services":{"analytics_service":{"status":1}}}]}' > app/google-services.json
-          fi
+          mkdir -p app
+          cat << 'EOF' > app/google-services.json
+          {
+            "project_info": {
+              "project_number": "123456789012",
+              "project_id": "khadamati-app",
+              "storage_bucket": "khadamati-app.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:123456789012:android:abcdef1234567890",
+                  "android_client_info": {
+                    "package_name": "com.aistudio.khadamati.app"
+                  }
+                },
+                "oauth_client": [],
+                "api_key": [
+                  {
+                    "current_key": "AIzaSyMockKeyForBuildOnly123456789"
+                  }
+                ],
+                "services": {
+                  "analytics_service": {
+                    "status": 1
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF
 
-      # تنفيذ عملية بناء الـ APK
+      # 3. بناء تطبيق أندرويد
       - name: Build APK with Gradle
         run: gradle assembleDebug --no-daemon --stacktrace
 
-      # رفع ملف الـ APK الناتج كـ Artifact لتحميله بعد انتهاء البناء
+      # 4. رفع الـ APK لتحميله
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
